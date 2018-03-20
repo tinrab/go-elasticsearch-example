@@ -1,20 +1,30 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/teris-io/shortid"
 	elastic "gopkg.in/olivere/elastic.v5"
 )
 
 type Document struct {
+	ID        string                `json:"id"`
 	Title     string                `json:"title"`
 	CreatedAt time.Time             `json:"created_at"`
 	Content   string                `json:"content"`
 	Suggest   *elastic.SuggestField `json:"suggest_field"`
 }
+
+const (
+	elasticIndexName = "blog"
+	elasticTypeName  = "document"
+)
 
 const mapping = `
 {
@@ -45,12 +55,21 @@ const mapping = `
 }
 `
 
-type CreateDocuentRequest struct {
+type DocumentRequest struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 
-type SearchRequest struct {
+type DocumentResponse struct {
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
+}
+
+type SearchResponse struct {
+	Time      string             `json:"time"`
+	Hits      string             `json:"hits"`
+	Documents []DocumentResponse `json:"documents"`
 }
 
 var (
@@ -59,7 +78,6 @@ var (
 
 func main() {
 	var err error
-
 	// Create Elastic client and wait for Elasticsearch to be ready
 	for {
 		elasticClient, err = elastic.NewClient(
@@ -68,30 +86,93 @@ func main() {
 		)
 		if err != nil {
 			log.Println(err)
+			// Retry every 3 seconds
 			time.Sleep(3 * time.Second)
 		} else {
 			break
 		}
 	}
-
+	// Start HTTP server
 	r := gin.Default()
-	r.POST("/documents", createDocumentEndpoint)
+	r.POST("/documents", createDocumentsEndpoint)
 	r.GET("/search", searchEndpoint)
 	if err = r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func createDocumentEndpoint(c *gin.Context) {
-	var req CreateDocuentRequest
-	if err := c.BindJSON(&req); err != nil {
+func createDocumentsEndpoint(c *gin.Context) {
+	// Parse request
+	var docs []DocumentRequest
+	if err := c.BindJSON(&docs); err != nil {
 		errorResponse(c, http.StatusBadRequest, "Malformed request body")
 		return
 	}
-	c.JSON(http.StatusOK, req)
+	// Insert documents in bulk
+	bulk := elasticClient.
+		Bulk().
+		Index(elasticIndexName).
+		Type(elasticTypeName)
+	for _, d := range docs {
+		doc := Document{
+			ID:        shortid.MustGenerate(),
+			Title:     d.Title,
+			CreatedAt: time.Now().UTC(),
+			Content:   d.Content,
+		}
+		bulk.Add(elastic.NewBulkIndexRequest().Id(doc.ID).Doc(doc))
+	}
+	if _, err := bulk.Do(c.Request.Context()); err != nil {
+		log.Println(err)
+		errorResponse(c, http.StatusInternalServerError, "Failed to create documents")
+		return
+	}
+	c.Status(http.StatusOK)
 }
 
 func searchEndpoint(c *gin.Context) {
+	// Parse request
+	query := c.Query("query")
+	if query == "" {
+		errorResponse(c, http.StatusBadRequest, "Query not specified")
+		return
+	}
+	skip := 0
+	take := 10
+	if i, err := strconv.Atoi(c.Query("skip")); err == nil {
+		skip = i
+	}
+	if i, err := strconv.Atoi(c.Query("take")); err == nil {
+		take = i
+	}
+	// Perform search
+	esQuery := elastic.NewMultiMatchQuery(query, "title", "content").
+		Fuzziness("2").
+		MinimumShouldMatch("2")
+	result, err := elasticClient.Search().
+		Index(elasticIndexName).
+		Query(esQuery).
+		From(skip).Size(take).
+		Do(c.Request.Context())
+	if err != nil {
+		log.Println(err)
+		errorResponse(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	res := SearchResponse{
+		Time: fmt.Sprintf("%d", result.TookInMillis),
+		Hits: fmt.Sprintf("%d", result.Hits.TotalHits),
+	}
+	// Transform search results before returning them
+	docs := make([]DocumentResponse, 0)
+	for _, hit := range result.Hits.Hits {
+		var doc DocumentResponse
+		// Leave empty document if unmarshal fails
+		json.Unmarshal(*hit.Source, &doc)
+		docs = append(docs, doc)
+	}
+	res.Documents = docs
+	c.JSON(http.StatusOK, res)
 }
 
 func errorResponse(c *gin.Context, code int, err string) {

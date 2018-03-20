@@ -3,6 +3,7 @@ services:
   search_api:
     container_name: 'search_api'
     build: ./search-api
+    restart: 'on-failure'
     ports:
       - '8080:8080'
     depends_on:

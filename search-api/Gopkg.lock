@@ -45,6 +45,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  name = "github.com/teris-io/shortid"
+  packages = ["."]
+  revision = "6c56cef5189ca1b3d5ef01dc07f4d611dfc0bb33"
+  version = "v1.0"
+
+[[projects]]
   name = "github.com/ugorji/go"
   packages = ["codec"]
   revision = "c88ee250d0221a57af388746f5cf03768c21d6e2"
@@ -79,6 +85,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b9d41ddaca4ffa0cb83533ca185a304db6418e4a0e389b4f66383a0ec537aef7"
+  inputs-digest = "2f4fbcd992ecaec41244a249cb22786f5ef0fa88f24954f1aa4b25581b3573dd"
   solver-name = "gps-cdcl"
   solver-version = 1
