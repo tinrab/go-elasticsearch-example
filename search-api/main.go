@@ -9,20 +9,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olivere/elastic"
 	"github.com/teris-io/shortid"
-	elastic "gopkg.in/olivere/elastic.v5"
 )
 
 type Document struct {
-	ID        string                `json:"id"`
-	Title     string                `json:"title"`
-	CreatedAt time.Time             `json:"created_at"`
-	Content   string                `json:"content"`
-	Suggest   *elastic.SuggestField `json:"suggest_field"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
 }
 
 const (
-	elasticIndexName = "blog"
+	elasticIndexName = "documents"
 	elasticTypeName  = "document"
 )
 
@@ -45,9 +44,6 @@ const mapping = `
           "type": "text",
           "store": true,
           "fielddata": true
-        },
-        "suggest_field": {
-          "type": "completion"
         }
       }
     }
@@ -167,7 +163,6 @@ func searchEndpoint(c *gin.Context) {
 	docs := make([]DocumentResponse, 0)
 	for _, hit := range result.Hits.Hits {
 		var doc DocumentResponse
-		// Leave empty document if unmarshal fails
 		json.Unmarshal(*hit.Source, &doc)
 		docs = append(docs, doc)
 	}

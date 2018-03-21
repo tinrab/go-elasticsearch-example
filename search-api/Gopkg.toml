@@ -30,8 +30,12 @@
   version = "1.2.0"
 
 [[constraint]]
-  name = "gopkg.in/olivere/elastic.v5"
-  version = "5.0.66"
+  name = "github.com/olivere/elastic"
+  version = "6.1.12"
+
+[[constraint]]
+  name = "github.com/teris-io/shortid"
+  version = "1.0.0"
 
 [prune]
   go-tests = true
