@@ -13,43 +13,17 @@ import (
 	"github.com/teris-io/shortid"
 )
 
+const (
+	elasticIndexName = "documents"
+	elasticTypeName  = "document"
+)
+
 type Document struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
 	Content   string    `json:"content"`
 }
-
-const (
-	elasticIndexName = "documents"
-	elasticTypeName  = "document"
-)
-
-const mapping = `
-{
-  "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0
-  },
-  "mappings": {
-    "document" {
-      "properties": {
-        "title": {
-          "type": "text"
-        },
-        "created_at": {
-          "type": "date"
-        },
-        "content": {
-          "type": "text",
-          "store": true,
-          "fielddata": true
-        }
-      }
-    }
-  }
-}
-`
 
 type DocumentRequest struct {
 	Title   string `json:"title"`
