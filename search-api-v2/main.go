@@ -131,7 +131,7 @@ func searchEndpoint(c *gin.Context) {
 	}
 	res := SearchResponse{
 		Time: fmt.Sprintf("%d", result.TookInMillis),
-		Hits: fmt.Sprintf("%d", result.Hits.TotalHits),
+		Hits: fmt.Sprintf("%d", result.Hits.TotalHits.Value),
 	}
 	// Transform search results before returning them
 	docs := make([]DocumentResponse, 0)
