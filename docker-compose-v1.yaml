@@ -2,7 +2,7 @@ version: '3.5'
 services:
   search_api:
     container_name: 'search_api'
-    build: ./search-api-v2
+    build: ./search-api
     restart: 'on-failure'
     ports:
       - '8080:8080'
@@ -10,6 +10,6 @@ services:
       - elasticsearch
   elasticsearch:
     container_name: 'elasticsearch'
-    image: 'bitnami/elasticsearch:7'
+    image: 'bitnami/elasticsearch:latest'
     ports:
       - '9200:9200'
